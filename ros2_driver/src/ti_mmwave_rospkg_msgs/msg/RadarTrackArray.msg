@@ -1,4 +1,3 @@
-string frame_id
-uint32 stamp
+std_msgs/Header header
 uint32 num_tracks
 RadarTrackContents[] track

@@ -1,4 +1,2 @@
-uint32 seq
-uint32 stamp
-string frame_id
+std_msgs/Header header
 uint32 state

@@ -15,17 +15,17 @@
 
 std::shared_ptr<rclcpp::Node> nodeptr3 = nullptr;
 
-class ParameterParser : public rclcpp::Node 
-{   
+class ParameterParser : public rclcpp::Node
+{
 public:
     ParameterParser() : Node("ParameterParser")
     {
-        this->declare_parameter("device_name", rclcpp::PARAMETER_STRING);        
+        this->declare_parameter("device_name", rclcpp::PARAMETER_STRING);
         this->declare_parameter("mmwavecli_name", rclcpp::PARAMETER_STRING);
         this->declare_parameter("mmwavecli_cfg", rclcpp::PARAMETER_STRING);
         parameters_client_test = std::make_shared<rclcpp::AsyncParametersClient>(this, "/ConfigParameterServer");
         parameters_client_test->wait_for_service();
-        auto parameters_future = parameters_client_test->get_parameters({        
+        auto parameters_future = parameters_client_test->get_parameters({
             "/ti_mmwave/startFreq",
             "/ti_mmwave/idleTime",
             "/ti_mmwave/adcStartTime",
@@ -44,7 +44,7 @@ public:
             "/ti_mmwave/zoneMinY",
             "/ti_mmwave/zoneMaxY",
             "/ti_mmwave/zoneMinZ",
-            "/ti_mmwave/zoneMaxZ" 
+            "/ti_mmwave/zoneMaxZ"
         },
         std::bind(&ParameterParser::callbackGlobalParam, this, std::placeholders::_1));
     }
@@ -89,19 +89,19 @@ int main(int argc, char **argv) {
     std::ifstream myCfgParam;
     std::string str_param;
     std::string deviceName = nodeptr3->get_parameter("device_name").as_string();
-    std::string mmWaveCLIname = nodeptr3->get_parameter("mmwavecli_name").as_string();
+    // std::string mmWaveCLIname = nodeptr3->get_parameter("mmwavecli_name").as_string();
     std::string mmWaveCLIcfg = nodeptr3->get_parameter("mmwavecli_cfg").as_string();
     auto parameters_client = std::make_shared<rclcpp::AsyncParametersClient>(nodeptr3, "/ConfigParameterServer");
     myCfgParam.open(mmWaveCLIcfg);
 
     if (deviceName.compare("6432") != 0)
     {
-        if (myCfgParam.is_open()) 
+        if (myCfgParam.is_open())
         {
-            while( std::getline(myCfgParam, str_param)) 
+            while( std::getline(myCfgParam, str_param))
             {
                 str_param.erase(std::remove(str_param.begin(), str_param.end(), '\r'), str_param.end());
-                if (!(std::regex_match(str_param, std::regex("^\\s*%.*")) || std::regex_match(str_param, std::regex("^\\s*")))) 
+                if (!(std::regex_match(str_param, std::regex("^\\s*%.*")) || std::regex_match(str_param, std::regex("^\\s*"))))
                 {
                 //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"myParams equals %s\n", str_param.c_str() );
                     std::istringstream ss(str_param);
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
                         v.push_back(token);
                     }
 
-                    if (!v[0].compare("profileCfg")) 
+                    if (!v[0].compare("profileCfg"))
                     {
                     //RCLCPP_INFO(this->get_logger(), "ProfileCfg");
                         parameters_client->set_parameters(
@@ -132,8 +132,8 @@ int main(int argc, char **argv) {
                         freqSlopeConst = std::stof(v[8]);
                         numAdcSamples = std::stof(v[10]);
                         digOutSampleRate = std::stof(v[11]);
-                    } 
-                    else if (!v[0].compare("frameCfg")) 
+                    }
+                    else if (!v[0].compare("frameCfg"))
                     {
                         parameters_client->set_parameters(
                         {
@@ -149,8 +149,8 @@ int main(int argc, char **argv) {
                         numLoops = std::stoi(v[3]);
                         numFrames = std::stoi(v[4]);
                         framePeriodicity = std::stof(v[5]);
-                    } 
-                    else if (!v[0].compare("zoneDef")) 
+                    }
+                    else if (!v[0].compare("zoneDef"))
                     {
                         parameters_client->set_parameters(
                         {
@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
                         zoneMinZ = std::stoi(v[6]);
                         zoneMaxZ = std::stoi(v[7]);
                     }
-                }                
+                }
             }
         }
 
@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
         float adc_duration = nr / fs;
         float BW = adc_duration * kf;
         float PRI = (idleTime + rampEndTime) * 1e-6;
-        float fc = startFreq * 1e9 + kf * (adcStartTime * 1e-6 + adc_duration / 2); 
+        float fc = startFreq * 1e9 + kf * (adcStartTime * 1e-6 + adc_duration / 2);
         float vrange = c0 / (2 * BW);
         float max_range = nr * vrange;
         float max_vel = c0 / (2 * fc * PRI) / ntx;

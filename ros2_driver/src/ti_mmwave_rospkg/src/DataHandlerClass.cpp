@@ -8,24 +8,20 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-using namespace std::chrono_literals;
 
-rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr DataUARTHandler_pub;
-rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarScan>::SharedPtr radar_scan_pub;
-rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarOccupancy>::SharedPtr radar_occupancy_pub;
-rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarPointTrackID>::SharedPtr radar_trackid_pub;
-rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarTrackArray>::SharedPtr radar_trackarray_pub;
 std::shared_ptr<sensor_msgs::msg::PointCloud2> pc2_msg_;
 DataUARTHandler* gDataHandlerPtr;
-rclcpp::Clock clocker;
 
 DataUARTHandlerNode::DataUARTHandlerNode() : Node("DataUARTHandlerNode")
 {
 
-    this->declare_parameter("mmwavecli_name", rclcpp::PARAMETER_STRING);
-    this->declare_parameter("mmwavecli_cfg", rclcpp::PARAMETER_STRING);
+    // this->declare_parameter("mmwavecli_name", rclcpp::PARAMETER_STRING);
+    // this->declare_parameter("mmwavecli_cfg", rclcpp::PARAMETER_STRING);
     this->declare_parameter("data_port", rclcpp::PARAMETER_STRING);
     this->declare_parameter("data_rate", rclcpp::PARAMETER_STRING);
+    this->declare_parameter("max_allowed_elevation_angle_deg", rclcpp::PARAMETER_INTEGER);
+    this->declare_parameter("max_allowed_azimuth_angle_deg", rclcpp::PARAMETER_INTEGER);
+    this->declare_parameter("frame_id", rclcpp::PARAMETER_STRING);
 
 }
 
@@ -66,7 +62,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (mmWaveCloudType,
 
 DataUARTHandler::DataUARTHandler(std::shared_ptr<rclcpp::Node> nh) : currentBufp(&pingPongBuffers[0]) , nextBufp(&pingPongBuffers[1])
 {
-    DataUARTHandler_pub = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/ti_mmwave/radar_scan_pcl", 100);
+    radar_scan_pcl_pub = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/ti_mmwave/radar_scan_pcl", 100);
     radar_scan_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarScan>("/ti_mmwave/radar_scan", 100);
     radar_occupancy_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarOccupancy>("/ti_mmwave/radar_occupancy", 100);
     radar_trackid_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarPointTrackID>("/ti_mmwave/radar_point_track_id", 100);
@@ -75,6 +71,8 @@ DataUARTHandler::DataUARTHandler(std::shared_ptr<rclcpp::Node> nh) : currentBufp
     maxAllowedAzimuthAngleDeg = 90; // Use max angle if none specified
     gDataHandlerPtr = this;
     stop_threads = false;
+
+    nodeHandle = nh;
 }
 
 void DataUARTHandler::setFrameID(char const* myFrameID)
@@ -418,7 +416,6 @@ void *DataUARTHandler::sortIncomingData(void)
                     mmwData.numObjOut = mmwData.header.numDetectedObj;
                 }
 
-                RScan->header.stamp = static_cast<long int>(clocker.now().seconds());
                 RScan->header.frame_id = frameID;
                 RScan->height = 1;
                 RScan->width = mmwData.numObjOut;
@@ -490,8 +487,8 @@ void *DataUARTHandler::sortIncomingData(void)
                         RScan->points[i].z = temp[2];   // ROS standard coordinate system Z-axis is up which is the same as mmWave sensor Z-axis
                         //RScan->points[i].intensity = temp[5];
 
-                        radarscan.frame_id = frameID;
-                        radarscan.stamp = static_cast<long int>(clocker.now().seconds());
+                        radarscan.header.stamp = nodeHandle->now();
+                        radarscan.header.frame_id = frameID;
                         radarscan.point_id = i;
                         radarscan.x = temp[1];
                         radarscan.y = -temp[0];
@@ -526,8 +523,8 @@ void *DataUARTHandler::sortIncomingData(void)
                         RScan->points[i].z = mmwData.newObjOut.z;   // ROS standard coordinate system Z-axis is up which is the same as mmWave sensor Z-axis
                         RScan->points[i].velocity = mmwData.newObjOut.velocity;
 
-                        radarscan.frame_id = frameID;
-                        radarscan.stamp = static_cast<long int>(clocker.now().seconds());
+                        radarscan.header.stamp = nodeHandle->now();
+                        radarscan.header.frame_id = frameID;
                         radarscan.point_id = i;
                         radarscan.x = mmwData.newObjOut.y;
                         radarscan.y = -mmwData.newObjOut.x;
@@ -602,13 +599,14 @@ void *DataUARTHandler::sortIncomingData(void)
 
                 radaroccupancy.state = mmwData.occupancy.state;
 
-                if (radaroccupancy.state == 0){
-    	      // RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Area is clear!");
-                }
-                else{
-    	      // RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Area is OCCUPIED!");
-                }
+                // if (radaroccupancy.state == 0){
+                //     RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Area is clear!");
+                // }
+                // else{
+                //     RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Area is OCCUPIED!");
+                // }
 
+                radaroccupancy.header.stamp = nodeHandle->now();
                 radar_occupancy_pub->publish(radaroccupancy);
 
                 sorterState = CHECK_TLV_TYPE;
@@ -693,8 +691,8 @@ void *DataUARTHandler::sortIncomingData(void)
                     RScan->points[i].velocity = realDoppler;
                     RScan->points[i].intensity = realSNR;
 
-                    radarscan.frame_id = frameID;
-                    radarscan.stamp = clocker.now().seconds();
+                    radarscan.header.stamp = nodeHandle->now();
+                    radarscan.header.frame_id = frameID;
 
                     radarscan.point_id = i;
                     radarscan.x = realRange * cos(realAzimuth) * cos(realElevation);
@@ -729,8 +727,7 @@ void *DataUARTHandler::sortIncomingData(void)
                 i = 0;
                 offset = 0;
                 mmwData.numObjOut = mmwData.header.numDetectedObj;
-                radartrackarray.frame_id = frameID;
-                radartrackarray.stamp = clocker.now().seconds();
+
                 radartrackarray.num_tracks = (int) tlvLen / 112;
 
                 //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Number of Tracks is: %d",(tlvLen / 112));
@@ -788,8 +785,8 @@ void *DataUARTHandler::sortIncomingData(void)
                     memcpy( &mmwData.newListOut.confidenceLevel, &currentBufp->at(currentDatap), sizeof(mmwData.newListOut.confidenceLevel));
                     currentDatap += ( sizeof(mmwData.newListOut.confidenceLevel) );
 
-                    radartrackcontents.frame_id = frameID;
-                    radartrackcontents.stamp = clocker.now().seconds();
+                    radartrackcontents.header.stamp = nodeHandle->now();
+                    radartrackcontents.header.frame_id = frameID;
                     radartrackcontents.tid = mmwData.newListOut.tid;
                     radartrackcontents.posx = mmwData.newListOut.posY;  // ROS standard coordinate system X-axis is forward which is the mmWave sensor Y-axis
                     radartrackcontents.posy = -mmwData.newListOut.posX; // ROS standard coordinate system Y-axis is left which is the mmWave sensor -(X-axis)
@@ -802,8 +799,10 @@ void *DataUARTHandler::sortIncomingData(void)
                     radartrackcontents.accz = mmwData.newListOut.accZ;
                     radartrackarray.track.push_back(radartrackcontents);
                     i++;
-
                 }
+
+                radartrackarray.header.stamp = nodeHandle->now();
+                radartrackarray.header.frame_id = frameID;
                 radar_trackarray_pub->publish(radartrackarray);
                 radartrackarray.track.clear();
                 sorterState = CHECK_TLV_TYPE;
@@ -881,8 +880,9 @@ void *DataUARTHandler::sortIncomingData(void)
                     RScan->points[i].z =  realZ;
                     RScan->points[i].velocity = realDoppler;
                     RScan->points[i].intensity = realSNR;
-                    radarscan.frame_id = frameID;
-                    radarscan.stamp = clocker.now().seconds();
+
+                    radarscan.header.stamp = nodeHandle->now();
+                    radarscan.header.frame_id = frameID;
                     radarscan.point_id = i;
                     radarscan.x = realY;
                     radarscan.y = -(realX);
@@ -932,12 +932,12 @@ void *DataUARTHandler::sortIncomingData(void)
 
         //      throw away first track in order to allign with PointCloud
         //  if (frameID == 0){
-                radartrackid.frame_id = frameID;
+                radartrackid.header.frame_id = frameID;
         //  }
         //  else{
         //     radartrackid.header.frame_id = frameID - 1;
         //  }
-                radartrackid.stamp = clocker.now().seconds();
+                radartrackid.header.stamp = nodeHandle->now();
                 radartrackid.tid = mmwData.newIndexOut.targetID;
 
                 radar_trackid_pub->publish(radartrackid);
@@ -1040,8 +1040,9 @@ void *DataUARTHandler::sortIncomingData(void)
                     }
                     pc2_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
                     pcl::toROSMsg(*RScan, *pc2_msg_);
-                    pc2_msg_->header.frame_id = "map";
-                    DataUARTHandler_pub->publish(*pc2_msg_);
+                    pc2_msg_->header.stamp = nodeHandle->now();
+                    pc2_msg_->header.frame_id = frameID;
+                    radar_scan_pcl_pub->publish(*pc2_msg_);
                     sorterState = SWAP_BUFFERS;
                 }
                 else  // More TLV sections to parse
@@ -1257,17 +1258,22 @@ void DataUARTHandler::stop()
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
+
     auto node = std::make_shared<DataUARTHandlerNode>();
     std::string mySerialPort = node->get_parameter("data_port").as_string();
     std::string myBaudRate = node->get_parameter("data_rate").as_string();
-    std::string myFrameID = "/ti_mmwave_0";
+    std::string myFrameID = node->get_parameter("frame_id").as_string();
+    int maxAllowedElevationAngleDeg = node->get_parameter("max_allowed_elevation_angle_deg").as_int();
+    int maxAllowedAzimuthAngleDeg = node->get_parameter("max_allowed_azimuth_angle_deg").as_int();
+
     DataUARTHandler d(node);
     d.setFrameID(myFrameID.c_str());
     d.setUARTPort(mySerialPort.c_str());
     d.setBaudRate(std::stoi(myBaudRate));
-    d.setMaxAllowedElevationAngleDeg(90);
-    d.setMaxAllowedAzimuthAngleDeg(90);
+    d.setMaxAllowedElevationAngleDeg(maxAllowedElevationAngleDeg);
+    d.setMaxAllowedAzimuthAngleDeg(maxAllowedAzimuthAngleDeg);
     d.start();
+
     rclcpp::spin(node);
     rclcpp::shutdown();
 }
