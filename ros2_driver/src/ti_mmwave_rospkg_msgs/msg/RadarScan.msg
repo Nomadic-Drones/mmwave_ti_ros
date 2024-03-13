@@ -1,6 +1,4 @@
-uint32 seq
-uint32 stamp
-string frame_id
+std_msgs/Header header
 uint16 point_id
 float32 x
 float32 y

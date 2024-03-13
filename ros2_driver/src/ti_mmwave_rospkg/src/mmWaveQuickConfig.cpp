@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     rclcpp::Client<ti_mmwave_rospkg_msgs::srv::MmwaveCli>::SharedPtr client = nodeptr->create_client<ti_mmwave_rospkg_msgs::srv::MmwaveCli>("/ti_mmwave_rospkg_msgs/mmwave_cli");
     auto request = std::make_shared<ti_mmwave_rospkg_msgs::srv::MmwaveCli::Request>();
     auto response = std::make_shared<ti_mmwave_rospkg_msgs::srv::MmwaveCli::Response>();
-    std::string mmWaveCLIname = nodeptr->get_parameter("mmwavecli_name").as_string();
+    // std::string mmWaveCLIname = nodeptr->get_parameter("mmwavecli_name").as_string();
     std::string mmWaveCLIcfg = nodeptr->get_parameter("mmwavecli_cfg").as_string();
     std::string sensorStart = "sensorStart";
 

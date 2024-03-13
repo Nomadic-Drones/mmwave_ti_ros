@@ -9,13 +9,9 @@ project(ti_mmwave_rospkg_msgs)
 ## dependencies
 
 find_package(ament_cmake REQUIRED)
-
 find_package(rosidl_default_generators REQUIRED)
-
 find_package(rclcpp REQUIRED)
-
 find_package(std_msgs REQUIRED)
-
 
 ## Generate messages in the 'msg' folder
 set(msg_files
@@ -33,14 +29,9 @@ set(srv_files
 rosidl_generate_interfaces(ti_mmwave_rospkg_msgs
   ${msg_files}
   ${srv_files}
+  DEPENDENCIES std_msgs
 )
 
-## ament_target_dependencies(std_msgs rclcpp)  
-
-ament_export_dependencies(
-  rosidl_default_runtime
-  std_msgs
-  rclcpp
-)
+ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()

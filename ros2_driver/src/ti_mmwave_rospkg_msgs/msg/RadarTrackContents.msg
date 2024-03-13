@@ -1,5 +1,4 @@
-string frame_id
-uint32 stamp
+std_msgs/Header header
 uint32 tid
 float32 posx
 float32 posy
