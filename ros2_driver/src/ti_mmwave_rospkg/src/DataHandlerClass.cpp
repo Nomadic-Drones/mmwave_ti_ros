@@ -406,14 +406,18 @@ void *DataUARTHandler::sortIncomingData(void)
                 //get number of objects
                     memcpy( &mmwData.numObjOut, &currentBufp->at(currentDatap), sizeof(mmwData.numObjOut));
                     currentDatap += ( sizeof(mmwData.numObjOut) );
+                    //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"mmwData.numObjOut = %i", mmwData.numObjOut);
+
 
                 //get xyzQFormat
                     memcpy( &mmwData.xyzQFormat, &currentBufp->at(currentDatap), sizeof(mmwData.xyzQFormat));
                     currentDatap += ( sizeof(mmwData.xyzQFormat) );
+                    //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"mmwData.xyzQFormat = %d", mmwData.xyzQFormat);
                 }
                 else  // SDK version is at least 3.x
                 {
                     mmwData.numObjOut = mmwData.header.numDetectedObj;
+                    //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"mmwData.numObjOut = %i", mmwData.numObjOut);
                 }
 
                 RScan->header.frame_id = frameID;
@@ -516,6 +520,11 @@ void *DataUARTHandler::sortIncomingData(void)
                         //get object velocity (m/s)
                         memcpy( &mmwData.newObjOut.velocity, &currentBufp->at(currentDatap), sizeof(mmwData.newObjOut.velocity));
                         currentDatap += ( sizeof(mmwData.newObjOut.velocity) );
+
+                        //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"mmwData.objOut.x = %f", mmwData.newObjOut.x);
+                        //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"mmwData.objOut.y = %f", mmwData.newObjOut.y);
+                        //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"mmwData.objOut.z = %f", mmwData.newObjOut.z);
+                        //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"mmwData.objOut.velocity = %f", mmwData.newObjOut.velocity);
 
                         // Map mmWave sensor coordinates to ROS coordinate system
                         RScan->points[i].x = mmwData.newObjOut.y;   // ROS standard coordinate system X-axis is forward which is the mmWave sensor Y-axis

@@ -90,7 +90,10 @@ def generate_launch_description():
             {"mmwavecli_name": name},
             {"mmwavecli_cfg": path},
             {"data_port": data_port},
-            {"data_rate": data_rate}
+            {"data_rate": data_rate},
+            {"frame_id": "ti_mmwave_0"},
+            {"max_allowed_elevation_angle_deg": 90},
+            {"max_allowed_azimuth_angle_deg": 90}
         ]
         ),
         Node(
