@@ -12,9 +12,9 @@ def generate_launch_description():
     path = os.path.join(my_package_dir,'cfg','1443_Standard.cfg')
     device = "1443"
     name = "/mmWaveCLI"
-    command_port = "/dev/ttyUSB0"
+    command_port = "/dev/ttyACM0"
     command_rate = "115200"
-    data_port = "/dev/ttyUSB1"
+    data_port = "/dev/ttyACM1"
     data_rate = "921600"
 
     ld = LaunchDescription()
@@ -84,8 +84,13 @@ def generate_launch_description():
         parameters=[
             {"mmwavecli_name": name},
             {"mmwavecli_cfg": path},
+            {"command_port": command_port},
+            {"command_rate": command_rate},
             {"data_port": data_port},
-            {"data_rate": data_rate}
+            {"data_rate": data_rate},
+            {"max_allowed_elevation_angle_deg": 90},
+            {"max_allowed_azimuth_angle_deg": 90},
+            {"frame_id": "/ti_mmwave_0"},
         ]
 
     )

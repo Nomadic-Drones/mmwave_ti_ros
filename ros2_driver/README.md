@@ -1,11 +1,45 @@
-# TI mmWave ROS2 Package (Customized)
+# TI mmWave ROS2 Package
 
-### Based on updates from Pedrhom Nafisi (Texas Instruments)
+### Created by Pedrhom Nafisi, updates collaborated with JuneChul Roh (Texas Instruments)
 ---
-### Most recent change from Pedrhom Nafisi:
-ROS2 Driver Created (1.0.0)
+### Release Notes
 
-Initially derived from TI's original ROS1 package found in TI's Resource Explorer's [Radar Toolbox](https://dev.ti.com/tirex/global?id=RADAR_TOOLBOX).
+#### ROS2 Driver v1.2.2 20 Aug 2024
+
+* Fixed launch file issues with legacy devices
+
+#### ROS2 Driver v1.2.1 15 Aug 2024
+
+* Added support for 6432 ES2
+* Improved 6432 configs to have better xyz positioning and velocity estimation
+
+#### ROS2 Driver v1.2.0 12 Mar 2024
+
+* Updated the launch files and the rviz file
+* Added a common launch file IWR6843.py for all the IWR6843x launch files.
+* CLI config file, command port, and data port can passed at the command line with launch arguments. 
+* 6843{ISK,AOP}{Standard,Tracking,Occupancy}.py now call the common launch file.
+* Updated the rviz file to display the XYZ axes.
+* Updated to use the standard header message, std_msgs/Header. Note that "seq" field in the header was deprecated in ROS 2.
+* Removed ti_mmwave_rospkg/src/{build, install, log} folders.
+
+#### ROS2 Driver v1.1.1 12 Feb 2024
+
+* Updated ISK launch file to call correct configuration file
+
+#### ROS2 Driver v1.1.0 21 Nov 2023 
+
+* Updated CMakeLists.txt to install the "cfg" folder.
+* Path to .cfg file is now set using get_package_share_directory().
+* Updated 6843*.py launch files to add a feature optionally disable rViz with an launch argument "rviz". To disable rViz, pass "rviz:=false" in the launch command.
+* Updated to get rid of error message at Ctrl+C termination
+* Compatible with reference to TI Robotics SDK for Jacinto Processors
+
+#### ROS2 Driver Created v1.0.0 29 Aug 2023 
+
+* Initially derived from TI's original ROS1 package found in TI's Resource Explorer's [Radar Toolbox](https://dev.ti.com/tirex/global?id=RADAR_TOOLBOX).
+
+---
 
 ### Differences from original ROS1 TI's version:
 1. Support ROS2 Humble as opposed to ROS1 Noetic. 
@@ -17,23 +51,21 @@ Initially derived from TI's original ROS1 package found in TI's Resource Explore
 ---
 ### Available devices:
 ```
-TI mmWave xWR1443BOOST
-TI mmWave xWR1642BOOST
-TI mmWave xWR1642BOOST ES2.0/3.0 EVM (not tested)
-TI mmWave xWR1642BOOST ES2.0 EVM
-TI mmWave AWR1843BOOST ES1.0 EVM
+TI mmWave IWR1443BOOST EVM
+TI mmWave IWR1642BOOST EVM
+TI mmWave IWR1843BOOST EVM
 TI mmWave IWR6843ISK EVM
-TI mmWave IWR6843AOP EVM
-TI mmWave IWRL6432 EVM
+TI mmWave IWR6843AOPEVM
+TI mmWave IWRL6432BOOST EVM
 ```
 ---
 ### Quick start guide:
 1. Mount mmWave Sensor if necessary and connect a micro-USB cable to host computer that has [ROS2 Humble](https://docs.ros.org/en/humble/index.html).
 
 2. Download the mmWave [SDK](https://www.ti.com/tool/MMWAVE-SDK) or [L-SDK](https://www.ti.com/tool/MMWAVE-L-SDK) and then use [UNIFLASH](http://www.ti.com/tool/UNIFLASH) to flash a binary to your device.  
-**Do not forget to change your device's mux switches to and from flashing mode when flashing. Check the EVM Setup Operational Modes user guide in the Radar Toolbox under Hardware Guides**
+**Do not forget to change your device's MUX switches to and from flashing mode when flashing. Check the EVM Setup Operational Modes user guide in the Radar Toolbox under Hardware Guides**
 
-3. Clone this repo into your `<workspace dir>/src`:
+3. Clone this repository into your `<workspace dir>/src`:
 
 4. Go back to `<workspace dir>`:
 
@@ -98,7 +130,7 @@ intensity: 13.6172780991  # Radar measured intensity in dB
 mmWaveCommSrv: Failed to open User serial port with error: IO Exception (13): Permission denied
 mmWaveCommSrv: Power cycle the mmWave Sensor with the reset button while keeping the USB connected. Ensure the correct launch file and configuration files are being used. Close all nodes, wait 10 seconds, then relaunch the driver
 ```
-If the instructions are followed and thi still happens, check to maure the serial port is called without superuser permission, do the following steps:
+If the instructions are followed and this still happens, check to make sure the serial port is called without superuser permission, do the following steps:
 ```
 sudo chmod 666 /dev/ttyACM0
 sudo chmod 666 /dev/ttyACM1
