@@ -63,10 +63,17 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (mmWaveCloudType,
 DataUARTHandler::DataUARTHandler(std::shared_ptr<rclcpp::Node> nh) : currentBufp(&pingPongBuffers[0]) , nextBufp(&pingPongBuffers[1])
 {
     radar_scan_pcl_pub = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/ti_mmwave/radar_scan_pcl", 100);
+    radar_track_marker_pub = nh->create_publisher<visualization_msgs::msg::Marker>("/ti_mmwave/radar_track_marker", 100);
+
     radar_scan_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarScan>("/ti_mmwave/radar_scan", 100);
     radar_occupancy_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarOccupancy>("/ti_mmwave/radar_occupancy", 100);
     radar_trackid_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarPointTrackID>("/ti_mmwave/radar_point_track_id", 100);
     radar_trackarray_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarTrackArray>("/ti_mmwave/radar_track_array", 100);
+    
+    radar_mdoppler_data_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarMicroDopplerDataArray>("/ti_mmwave/radar_micro_doppler_data_array", 100);
+    radar_mdoppler_feature_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarMicroDopplerFeatureArray>("/ti_mmwave/radar_micro_doppler_feature_array", 100);
+    radar_classifier_pub = nh->create_publisher<ti_mmwave_rospkg_msgs::msg::RadarClassifier>("/ti_mmwave/radar_classifier", 100);
+
     maxAllowedElevationAngleDeg = 90; // Use max angle if none specified
     maxAllowedAzimuthAngleDeg = 90; // Use max angle if none specified
     gDataHandlerPtr = this;
@@ -288,10 +295,10 @@ void *DataUARTHandler::sortIncomingData(void)
     uint32_t tlvLen = 0;
     uint32_t headerSize;
     uint32_t tlvSize = 0;
-    unsigned int currentDatap = 0;
+    uint32_t currentDatap = 0;
+    uint32_t addressHolder = 0;
     SorterState sorterState = READ_HEADER;
-    int i = 0, tlvCount = 0, offset = 0;
-    int j = 0;
+    int i = 0, j = 0, tlvCount = 0, offset = 0, numDopplerBins, numClassifications, temp;
     float maxElevationAngleRatioSquared;
     float maxAzimuthAngleRatio;
     float realElevation;
@@ -307,8 +314,25 @@ void *DataUARTHandler::sortIncomingData(void)
     ti_mmwave_rospkg_msgs::msg::RadarPointTrackID radartrackid;
     ti_mmwave_rospkg_msgs::msg::RadarTrackArray radartrackarray;
     ti_mmwave_rospkg_msgs::msg::RadarTrackContents radartrackcontents;
+    ti_mmwave_rospkg_msgs::msg::RadarMicroDopplerDataArray radarmicrodopplerdataarray;
+    ti_mmwave_rospkg_msgs::msg::RadarMicroDopplerDataContents radarmicrodopplerdatacontents;
+    ti_mmwave_rospkg_msgs::msg::RadarMicroDopplerFeatureArray radarmicrodopplerfeaturearray;
+    ti_mmwave_rospkg_msgs::msg::RadarMicroDopplerFeatureContents radarmicrodopplerfeaturecontents;
     ti_mmwave_rospkg_msgs::msg::RadarOccupancy radaroccupancy;
     ti_mmwave_rospkg_msgs::msg::RadarScan radarscan;
+    ti_mmwave_rospkg_msgs::msg::RadarClassifier radarclassifier;
+
+    visualization_msgs::msg::Marker tracklist;
+    geometry_msgs::msg::Point trackcenter;
+    tracklist.id                 = 0;
+    tracklist.type               = visualization_msgs::msg::Marker::CUBE_LIST;
+    tracklist.scale.x            = 0.8;
+    tracklist.scale.y            = 0.8;
+    tracklist.scale.z            = 0.8;
+    tracklist.color.r            = 1;
+    tracklist.color.a            = 0.5;
+    tracklist.pose.orientation.w = 1.0;
+    tracklist.frame_locked       = true;
 
     //wait for first packet to arrive
     pthread_mutex_lock(&countSync_mutex);
@@ -807,13 +831,23 @@ void *DataUARTHandler::sortIncomingData(void)
                     radartrackcontents.accy = -mmwData.newListOut.accX;
                     radartrackcontents.accz = mmwData.newListOut.accZ;
                     radartrackarray.track.push_back(radartrackcontents);
+
+                    trackcenter.x = radartrackcontents.posx;
+                    trackcenter.y = radartrackcontents.posy;
+                    trackcenter.z = radartrackcontents.posz;
+                    tracklist.points.push_back(trackcenter);
+
                     i++;
                 }
 
                 radartrackarray.header.stamp = nodeHandle->now();
                 radartrackarray.header.frame_id = frameID;
+                tracklist.header.stamp = nodeHandle->now();
+                tracklist.header.frame_id = frameID;
                 radar_trackarray_pub->publish(radartrackarray);
+                radar_track_marker_pub->publish(tracklist);
                 radartrackarray.track.clear();
+                tracklist.points.clear();
                 sorterState = CHECK_TLV_TYPE;
                 break;
             }
@@ -839,17 +873,21 @@ void *DataUARTHandler::sortIncomingData(void)
                 memcpy( &mmwData.newPointCloudCompOut.noiseUnit, &currentBufp->at(currentDatap), sizeof(mmwData.newPointCloudCompOut.noiseUnit));
                 currentDatap += ( sizeof(mmwData.newPointCloudCompOut.noiseUnit) );
 
-                //get number of detected objects
-                memcpy( &mmwData.newPointCloudCompOut.numDetectedPoints, &currentBufp->at(currentDatap), sizeof(mmwData.newPointCloudCompOut.numDetectedPoints));
-                currentDatap += ( sizeof(mmwData.newPointCloudCompOut.numDetectedPoints) );
+                //get number of detected objects major
+                memcpy( &mmwData.newPointCloudCompOut.numDetectedPointsMajor, &currentBufp->at(currentDatap), sizeof(mmwData.newPointCloudCompOut.numDetectedPointsMajor));
+                currentDatap += ( sizeof(mmwData.newPointCloudCompOut.numDetectedPointsMajor) );
+
+                //get number of detected objects minor
+                memcpy( &mmwData.newPointCloudCompOut.numDetectedPointsMinor, &currentBufp->at(currentDatap), sizeof(mmwData.newPointCloudCompOut.numDetectedPointsMinor));
+                currentDatap += ( sizeof(mmwData.newPointCloudCompOut.numDetectedPointsMinor) );
 
                 RScan->header.frame_id = frameID;
                 RScan->height = 1;
-                RScan->width = (mmwData.newPointCloudCompOut.numDetectedPoints[0] + mmwData.newPointCloudCompOut.numDetectedPoints[1]);
+                RScan->width = (mmwData.newPointCloudCompOut.numDetectedPointsMajor + mmwData.newPointCloudCompOut.numDetectedPointsMinor);
                 RScan->is_dense = 1;
                 RScan->points.resize(RScan->width * RScan->height);
 
-                while(i < (mmwData.newPointCloudCompOut.numDetectedPoints[0] + mmwData.newPointCloudCompOut.numDetectedPoints[1])) {
+                while(i < (RScan->width)) {
 
                     //get x value
                     memcpy( &mmwData.newPointCloudCompOut.x, &currentBufp->at(currentDatap), sizeof(mmwData.newPointCloudCompOut.x));
@@ -896,24 +934,11 @@ void *DataUARTHandler::sortIncomingData(void)
                     radarscan.x = realY;
                     radarscan.y = -(realX);
                     radarscan.z = realZ;
-                    radarscan.range = realRange;
                     radarscan.velocity = realDoppler;
                     radarscan.intensity = realSNR;
-
-                    if (((maxElevationAngleRatioSquared == -1) ||
-                     (((RScan->points[i].z * RScan->points[i].z) / (RScan->points[i].x * RScan->points[i].x +
-                        RScan->points[i].y * RScan->points[i].y)
-                     ) < maxElevationAngleRatioSquared)
-                     ) &&
-                        ((maxAzimuthAngleRatio == -1) || (fabs(RScan->points[i].y / RScan->points[i].x) < maxAzimuthAngleRatio)) &&
-                        (RScan->points[i].x != 0)
-                        )
-                    {
-                        radar_scan_pub->publish(radarscan);
-                    }
-
                     radar_scan_pub->publish(radarscan);
                     i++;
+
                 }
                 tlvSize = 0;
                 sorterState = CHECK_TLV_TYPE;
@@ -955,6 +980,107 @@ void *DataUARTHandler::sortIncomingData(void)
 
             sorterState = CHECK_TLV_TYPE;
             break;
+
+        case READ_MICRO_DOPPLER_DATA:
+
+            i = 0;
+            j = 0;
+            radarmicrodopplerdataarray.num_tracks = (int) radartrackarray.num_tracks;
+            numDopplerBins = (int) tlvLen / (radarmicrodopplerdataarray.num_tracks * 4);
+            // mdopplerdata[numTrack][numDopplerBins]
+
+            while( i < radarmicrodopplerdataarray.num_tracks ) {
+                while ( j < numDopplerBins ) {
+                    // get value
+                    memcpy( &mmwData.newMicroDopplerValue.value, &currentBufp->at(currentDatap), sizeof(mmwData.newMicroDopplerValue.value));
+                    currentDatap += ( sizeof(mmwData.newMicroDopplerValue.value) );
+                    radarmicrodopplerdatacontents.value = mmwData.newMicroDopplerValue.value;
+                    radarmicrodopplerdataarray.track.push_back(radarmicrodopplerdatacontents);
+                    j++;
+                    
+                }
+                j = 0;
+                i++;
+            }
+            radarmicrodopplerdataarray.header.stamp = nodeHandle->now();
+            radarmicrodopplerdataarray.header.frame_id = frameID;
+            radar_mdoppler_data_pub->publish(radarmicrodopplerdataarray);
+            radarmicrodopplerdataarray.track.clear();
+            sorterState = CHECK_TLV_TYPE;
+            break;
+
+        case READ_MICRO_DOPPLER_FEATURES:
+
+            i = 0;
+            //6 floats expected per track, 6 * 4 = 192
+            radarmicrodopplerfeaturearray.num_tracks = (int)radarmicrodopplerdataarray.num_tracks;
+            
+            while( i < radarmicrodopplerfeaturearray.num_tracks ) {
+                
+                // get lower frequency border of the occupied bandwidth
+                memcpy( &mmwData.newMicroDopplerFeature.fLow, &currentBufp->at(currentDatap), sizeof(mmwData.newMicroDopplerFeature.fLow));
+                currentDatap += ( sizeof(mmwData.newMicroDopplerFeature.fLow) );
+
+                // get upper frequency border of the occupied bandwidth
+                memcpy( &mmwData.newMicroDopplerFeature.fUp, &currentBufp->at(currentDatap), sizeof(mmwData.newMicroDopplerFeature.fUp));
+                currentDatap += ( sizeof(mmwData.newMicroDopplerFeature.fUp) );
+                
+                // get power within the occupied bandwidth
+                memcpy( &mmwData.newMicroDopplerFeature.bwPwr, &currentBufp->at(currentDatap), sizeof(mmwData.newMicroDopplerFeature.bwPwr));
+                currentDatap += ( sizeof(mmwData.newMicroDopplerFeature.bwPwr) );
+
+                // get mean frequency of the power spectral density estimate
+                memcpy( &mmwData.newMicroDopplerFeature.meanFreq, &currentBufp->at(currentDatap), sizeof(mmwData.newMicroDopplerFeature.meanFreq));
+                currentDatap += ( sizeof(mmwData.newMicroDopplerFeature.meanFreq) );
+
+                // get median frequency of the power spectral density estimate
+                memcpy( &mmwData.newMicroDopplerFeature.medFreq, &currentBufp->at(currentDatap), sizeof(mmwData.newMicroDopplerFeature.medFreq));
+                currentDatap += ( sizeof(mmwData.newMicroDopplerFeature.medFreq) );
+                
+                // get spectral entropy of the power spectral density estimate
+                memcpy( &mmwData.newMicroDopplerFeature.sEntropy, &currentBufp->at(currentDatap), sizeof(mmwData.newMicroDopplerFeature.sEntropy));
+                currentDatap += ( sizeof(mmwData.newMicroDopplerFeature.sEntropy) );
+
+                radarmicrodopplerfeaturecontents.header.stamp = nodeHandle->now();
+                radarmicrodopplerfeaturecontents.header.frame_id = frameID;
+                radarmicrodopplerfeaturecontents.f_low = mmwData.newMicroDopplerFeature.fLow;
+                radarmicrodopplerfeaturecontents.f_up = mmwData.newMicroDopplerFeature.fUp;
+                radarmicrodopplerfeaturecontents.bw_pwr = mmwData.newMicroDopplerFeature.bwPwr;
+                radarmicrodopplerfeaturecontents.mean_freq = mmwData.newMicroDopplerFeature.meanFreq;
+                radarmicrodopplerfeaturecontents.med_freq = mmwData.newMicroDopplerFeature.medFreq;
+                radarmicrodopplerfeaturecontents.s_entropy = mmwData.newMicroDopplerFeature.sEntropy;
+
+                radarmicrodopplerfeaturearray.track.push_back(radarmicrodopplerfeaturecontents);
+                i++;
+            }
+            radarmicrodopplerfeaturearray.header.stamp = nodeHandle->now();
+            radarmicrodopplerfeaturearray.header.frame_id = frameID;
+            radar_mdoppler_feature_pub->publish(radarmicrodopplerfeaturearray);
+            radarmicrodopplerfeaturearray.track.clear();
+            sorterState = CHECK_TLV_TYPE;
+            break;
+
+        case READ_CLASSIFIER:
+
+            i = 0;
+            j = 0;
+            numClassifications = 2;
+
+            while( i < (radarmicrodopplerfeaturearray.num_tracks * numClassifications) ) {
+                
+                // get classifier value per track
+                memcpy( &mmwData.newClassifier.value, &currentBufp->at(currentDatap), sizeof(mmwData.newClassifier.value));
+                currentDatap += ( sizeof(mmwData.newClassifier.value) );
+                radarclassifier.track_id = i / numClassifications;
+                //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Value before is : %c", mmwData.newClassifier.value);
+                temp = (int) mmwData.newClassifier.value;
+                //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Value now is : %c", mmwData.newClassifier.value);
+                radarclassifier.value = (float) temp / 128;
+                radar_classifier_pub->publish(radarclassifier);
+                i++;
+            }
+            sorterState = CHECK_TLV_TYPE;
+            break;    
 
         case READ_LOG_MAG_RANGE:
             {
@@ -1060,12 +1186,9 @@ void *DataUARTHandler::sortIncomingData(void)
                     memcpy( &tlvType, &currentBufp->at(currentDatap), sizeof(tlvType));
                     currentDatap += ( sizeof(tlvType) );
 
-                    //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : sizeof(tlvType) = %d", sizeof(tlvType));
                     //get tlvLen (32 bits) & remove from queue
                     memcpy( &tlvLen, &currentBufp->at(currentDatap), sizeof(tlvLen));
                     currentDatap += ( sizeof(tlvLen) );
-
-                    //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : sizeof(tlvLen) = %d", sizeof(tlvLen));
 
                     //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : tlvType = %d, tlvLen = %d", (int) tlvType, tlvLen);
 
@@ -1134,11 +1257,35 @@ void *DataUARTHandler::sortIncomingData(void)
                         sorterState = READ_TARGET_INDEX;
                         break;
 
+                    case MMWDEMO_OUTPUT_EXT_MSG_TARGET_LIST:
+                            //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : 3D Target List TLV");
+                        sorterState = READ_3D_TARGET_LIST;
+                        break;
+
+                    case MMWDEMO_OUTPUT_EXT_MSG_TARGET_INDEX:
+                            //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : Target Index TLV");
+                        sorterState = READ_TARGET_INDEX;
+                        break;
+
                     case MMWDEMO_OUTPUT_EXT_MSG_DETECTED_POINTS:
                             //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : Compressed Points TLV MMWAVE-L SDK 5.x");
                         sorterState = READ_COMPRESSED_POINT_CLOUD;
                         break;
 
+                    case MMWDEMO_OUTPUT_EXT_MSG_MICRO_DOPPLER_RAW_DATA:
+                            //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : Micro Doppler Raw Data");
+                        sorterState = READ_MICRO_DOPPLER_DATA;
+                        break;
+
+                    case MMWDEMO_OUTPUT_EXT_MSG_MICRO_DOPPLER_FEATURES:
+                            //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : Micro Doppler Feature List");
+                        sorterState = READ_MICRO_DOPPLER_FEATURES;
+                        break;
+
+                    case MMWDEMO_OUTPUT_EXT_MSG_CLASSIFIER_INFO:
+                            //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : Classifier");
+                        sorterState = READ_CLASSIFIER;
+                        break;
                     default:
                         break;
                     }

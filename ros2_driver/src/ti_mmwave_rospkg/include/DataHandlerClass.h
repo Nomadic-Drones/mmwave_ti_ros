@@ -15,14 +15,21 @@
 #include <boost/shared_ptr.hpp>
 #include "mmWave.h"
 #include "std_msgs/msg/header.hpp"
+#include "std_msgs/msg/char.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_field.hpp"
 #include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "visualization_msgs/msg/marker.hpp"
 #include "ti_mmwave_rospkg_msgs/msg/radar_scan.hpp"
 #include "ti_mmwave_rospkg_msgs/msg/radar_occupancy.hpp"
+#include "ti_mmwave_rospkg_msgs/msg/radar_classifier.hpp"
 #include "ti_mmwave_rospkg_msgs/msg/radar_point_track_id.hpp"
 #include "ti_mmwave_rospkg_msgs/msg/radar_track_array.hpp"
+#include "ti_mmwave_rospkg_msgs/msg/radar_micro_doppler_data_array.hpp"
+#include "ti_mmwave_rospkg_msgs/msg/radar_micro_doppler_data_contents.hpp"
+#include "ti_mmwave_rospkg_msgs/msg/radar_micro_doppler_feature_array.hpp"
+#include "ti_mmwave_rospkg_msgs/msg/radar_micro_doppler_feature_contents.hpp"
 #define COUNT_SYNC_MAX 2
 
 
@@ -82,10 +89,14 @@ public:
     mmwDataPacket mmwData;
 
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr radar_scan_pcl_pub;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr radar_track_marker_pub;
     rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarScan>::SharedPtr radar_scan_pub;
+    rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarClassifier>::SharedPtr radar_classifier_pub;
     rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarOccupancy>::SharedPtr radar_occupancy_pub;
     rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarPointTrackID>::SharedPtr radar_trackid_pub;
     rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarTrackArray>::SharedPtr radar_trackarray_pub;
+    rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarMicroDopplerDataArray>::SharedPtr radar_mdoppler_data_pub;
+    rclcpp::Publisher<ti_mmwave_rospkg_msgs::msg::RadarMicroDopplerFeatureArray>::SharedPtr radar_mdoppler_feature_pub;
 
 private:
 

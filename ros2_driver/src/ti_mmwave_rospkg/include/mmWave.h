@@ -79,6 +79,22 @@ enum MmwDemo_Output_TLV_Types
     /*! @brief  List of compressed detection points for MMWAVE-L SDK 5.x */
     MMWDEMO_OUTPUT_EXT_MSG_DETECTED_POINTS = 301,
 
+    /*! @brief  List of targets/tracks contents for MMWAVE-L SDK 5.x */
+    MMWDEMO_OUTPUT_EXT_MSG_TARGET_LIST = 308,
+
+    /*! @brief  Each point associated with a track is given the track ID it is associated with MMWAVE-L SDK 5.x */
+    MMWDEMO_OUTPUT_EXT_MSG_TARGET_INDEX = 309,
+
+    /*! @brief  Unprocess micro doppler spectrum for MMWAVE-L SDK 5.x 
+    Stored in a 2D array size of dopplerData[numberOfTracks][numberOfDopplerBins]*/
+    MMWDEMO_OUTPUT_EXT_MSG_MICRO_DOPPLER_RAW_DATA = 310,
+
+    /*! @brief  List of features extracted from the micro doppler spectrum, listed per track MMWAVE-L SDK 5.x */
+    MMWDEMO_OUTPUT_EXT_MSG_MICRO_DOPPLER_FEATURES = 311,
+
+    /*! @brief  Classifier output listed per track MMWAVE-L SDK 5.x */
+    MMWDEMO_OUTPUT_EXT_MSG_CLASSIFIER_INFO = 317,
+
     /*! @brief   Tracker TLV's */
     MMWDEMO_OUTPUT_MSG_TRACKERPROC_3D_TARGET_LIST = 1010,
 
@@ -105,6 +121,9 @@ SWAP_BUFFERS,
 READ_SPHERE_POINT_CLOUD, 
 READ_3D_TARGET_LIST, 
 READ_TARGET_INDEX,
+READ_MICRO_DOPPLER_DATA,
+READ_MICRO_DOPPLER_FEATURES,
+READ_CLASSIFIER,
 READ_COMPRESSED_POINT_CLOUD, 
 READ_SIDE_INFO,
 READ_OCCUPANCY};
@@ -235,6 +254,28 @@ typedef struct DPIF_TargetIndex_t
 
 }DPIF_TargetIndex_t;
 
+typedef struct DPIF_MicroDopplerRawData_t
+{
+  float value;
+
+}DPIF_MicroDopplerData_t;
+
+typedef struct DPIF_MicroDopplerFeature_t
+{
+    float fLow;
+
+    float fUp;
+
+    float bwPwr;
+
+    float meanFreq;
+
+    float medFreq;
+
+    float sEntropy;
+
+}DPIF_MicroDopplerFeature_t;
+
 typedef struct DPIF_SphericalPointCloud_t
 {
 
@@ -294,15 +335,17 @@ typedef struct DPIF_PointCloudCompressed_t
 
     float noiseUnit;
 
-    uint16_t numDetectedPoints[2];
+    uint16_t numDetectedPointsMajor;
 
-    uint16_t x;
+    uint16_t numDetectedPointsMinor;
 
-    uint16_t y;
+    int16_t x;
 
-    uint16_t z;
+    int16_t y;
 
-    uint16_t doppler;
+    int16_t z;
+
+    int16_t doppler;
 
     uint8_t snr;
 
@@ -316,10 +359,18 @@ typedef struct DPIF_PointCloudCompressed_t
 typedef struct DPIF_PointCloudOccupancy_t
 {
 
-/*! @brief state - CFAR cell to side noise ratio in dB expressed in 0.1 steps of dB */
     uint32_t state;
 
-}DPIF_PointCloudOccupancy;
+}DPIF_PointCloudOccupancy_t;
+
+typedef struct DPIF_ClassifierOutput_t
+{
+    
+    uint16_t track_id;
+    char value;
+
+}DPIF_ClassifierOutput;
+
 
 struct mmwDataPacket{
     MmwDemo_output_message_header_t header;
@@ -329,11 +380,15 @@ MmwDemo_DetectedObj objOut; // only used for SDK 1.x and 2.x
 
 DPIF_PointCloudCartesian_t newObjOut; // used for SDK 3.x
 DPIF_PointCloudSideInfo_t sideInfo; // used for SDK 3.x
-DPIF_PointCloudOccupancy occupancy; // added for Occupancy Zones
+DPIF_PointCloudOccupancy_t occupancy; // added for Occupancy Zones
 DPIF_TargetList3D_t newListOut; // added for Tracker
 DPIF_TargetIndex_t newIndexOut; // added for Tracker
 DPIF_SphericalPointCloud_t newSphereCloudOut; // added for Capon/Tracker
 DPIF_PointCloudCompressed_t newPointCloudCompOut; // added for MMWAVE-L SDK 5.x
+DPIF_MicroDopplerData_t newMicroDopplerValue;
+DPIF_MicroDopplerFeature_t newMicroDopplerFeature;
+DPIF_ClassifierOutput_t newClassifier;
+
 };
 
 const uint8_t magicWord[8] = {2, 1, 4, 3, 6, 5, 8, 7};
