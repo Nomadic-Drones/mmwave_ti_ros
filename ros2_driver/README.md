@@ -4,7 +4,7 @@
 ---
 ### Release Notes
 
-#### ROS2 Driver v1.3.0 20 Aug 2024
+#### ROS2 Driver v1.3.0 12 Nov 2024
 
 * Added tracker visualization in RVIZ
 * Added support for the following 6432 TLVs
