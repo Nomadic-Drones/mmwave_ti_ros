@@ -981,6 +981,29 @@ void *DataUARTHandler::sortIncomingData(void)
             sorterState = CHECK_TLV_TYPE;
             break;
 
+        case READ_TARGET_HEIGHT:
+
+            i = 0;
+
+            while (i < radartrackarray.num_tracks){
+
+                //get track's associated id (int)
+                memcpy( &mmwData.newHeightOut.targetID, &currentBufp->at(currentDatap), sizeof(mmwData.newHeightOut.targetID));
+                currentDatap += ( sizeof(mmwData.newHeightOut.targetID) );
+
+                //get track's associated height max (float)
+                memcpy( &mmwData.newHeightOut.maxZ, &currentBufp->at(currentDatap), sizeof(mmwData.newHeightOut.maxZ));
+                currentDatap += ( sizeof(mmwData.newHeightOut.maxZ) );
+
+                //get track's associated height min (float)
+                memcpy( &mmwData.newHeightOut.minZ, &currentBufp->at(currentDatap), sizeof(mmwData.newHeightOut.minZ));
+                currentDatap += ( sizeof(mmwData.newHeightOut.minZ) );
+                i++;
+                
+            }
+            sorterState = CHECK_TLV_TYPE;
+            break;
+
         case READ_MICRO_DOPPLER_DATA:
 
             i = 0;
@@ -1255,6 +1278,11 @@ void *DataUARTHandler::sortIncomingData(void)
                     case MMWDEMO_OUTPUT_MSG_TRACKERPROC_TARGET_INDEX:
                             //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : Target Index TLV");
                         sorterState = READ_TARGET_INDEX;
+                        break;
+
+                    case MMWDEMO_OUTPUT_MSG_TRACKERPROC_TARGET_HEIGHT:
+                            //RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"DataUARTHandler Sort Thread : Target Height TLV");
+                        sorterState = READ_TARGET_HEIGHT;
                         break;
 
                     case MMWDEMO_OUTPUT_EXT_MSG_TARGET_LIST:

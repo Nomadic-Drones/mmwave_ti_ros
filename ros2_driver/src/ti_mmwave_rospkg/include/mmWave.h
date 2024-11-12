@@ -101,6 +101,9 @@ enum MmwDemo_Output_TLV_Types
     /*! @brief   Tracker TLV's*/
     MMWDEMO_OUTPUT_MSG_TRACKERPROC_TARGET_INDEX = 1011,
 
+    /*! @brief   Tracker TLV's*/
+    MMWDEMO_OUTPUT_MSG_TRACKERPROC_TARGET_HEIGHT = 1012,
+
     /*! @brief   3D Spherical Compressed Point Cloud */
     MMWDEMO_OUTPUT_MSG_COMPRESSED_POINTS = 1020,
 
@@ -121,6 +124,7 @@ SWAP_BUFFERS,
 READ_SPHERE_POINT_CLOUD, 
 READ_3D_TARGET_LIST, 
 READ_TARGET_INDEX,
+READ_TARGET_HEIGHT,
 READ_MICRO_DOPPLER_DATA,
 READ_MICRO_DOPPLER_FEATURES,
 READ_CLASSIFIER,
@@ -254,6 +258,15 @@ typedef struct DPIF_TargetIndex_t
 
 }DPIF_TargetIndex_t;
 
+typedef struct DPIF_TargetHeight_t
+{
+
+  uint32_t targetID;
+  float maxZ;
+  float minZ;
+
+}DPIF_TargetHeight_t;
+
 typedef struct DPIF_MicroDopplerRawData_t
 {
   float value;
@@ -383,6 +396,7 @@ DPIF_PointCloudSideInfo_t sideInfo; // used for SDK 3.x
 DPIF_PointCloudOccupancy_t occupancy; // added for Occupancy Zones
 DPIF_TargetList3D_t newListOut; // added for Tracker
 DPIF_TargetIndex_t newIndexOut; // added for Tracker
+DPIF_TargetHeight_t newHeightOut; // added for Tracker
 DPIF_SphericalPointCloud_t newSphereCloudOut; // added for Capon/Tracker
 DPIF_PointCloudCompressed_t newPointCloudCompOut; // added for MMWAVE-L SDK 5.x
 DPIF_MicroDopplerData_t newMicroDopplerValue;

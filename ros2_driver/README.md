@@ -4,6 +4,17 @@
 ---
 ### Release Notes
 
+#### ROS2 Driver v1.3.0 20 Aug 2024
+
+* Added tracker visualization in RVIZ
+* Added support for the following 6432 TLVs
+  * 6432 Compressed Point Cloud TLV (TLV Type 301)
+  *	6432 Tracker (TLV Type 308 and 309)
+  *	Microdoppler Raw Data   (TLV Type 310)
+  *	Microdoppler Feature Extraction (TLV Type 311)
+  *	Classification Output Information (TLV Type 317)
+* Added new launch files and configurations for 6843AOP for static object detection and stationary target detection (fineMotion)
+
 #### ROS2 Driver v1.2.2 20 Aug 2024
 
 * Fixed launch file issues with legacy devices
